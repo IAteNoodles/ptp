@@ -1,0 +1,8 @@
+{
+	"servers": {
+		"Traffic": {
+			"url": "https://jubilant-goldfish-r44p96x49g2xwq-8005.app.github.dev/mcp/",
+      "type": "http"
+		}
+	}
+}
