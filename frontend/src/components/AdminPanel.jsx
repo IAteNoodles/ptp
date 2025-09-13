@@ -4,75 +4,62 @@ import './AdminPanel.css'
 const AdminPanel = () => {
   const [complaints, setComplaints] = useState([])
   const [expandedCards, setExpandedCards] = useState(new Set())
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
-  // Mock data for now - this will be replaced with API call
+  // Load complaints from localStorage (where we'll store submitted reports)
+  const loadComplaintsFromStorage = () => {
+    try {
+      const storedComplaints = localStorage.getItem('submittedComplaints')
+      if (storedComplaints) {
+        const parsedComplaints = JSON.parse(storedComplaints)
+        return parsedComplaints.map((complaint, index) => ({
+          id: index + 1,
+          ...complaint,
+          timestamp: complaint.submitted_at || new Date().toISOString()
+        }))
+      }
+    } catch (error) {
+      console.error('Error loading complaints from storage:', error)
+    }
+    return []
+  }
+
+  // Mock data for demonstration (keeping some sample data)
   const mockComplaints = [
     {
-      id: 1,
-      title: "Pothole on Main Road",
-      department: "Roads & Infrastructure",
-      description: "There is a large pothole on the main road near Brigade Mall that is causing traffic issues and is dangerous for vehicles. The pothole has been there for over a month and keeps getting bigger due to monsoon rains. Multiple vehicles have been damaged due to this.",
-      image: null,
-      timestamp: "2025-09-13T10:30:00Z",
-      status: "pending"
-    },
-    {
-      id: 2,
-      title: "Garbage Collection Issue",
+      id: 101,
+      title: "Sample: Garbage Collection Issue",
       department: "Waste Management",
-      description: "Garbage has not been collected from our street (MG Road area) for the past 5 days. The waste is piling up and creating unhygienic conditions.",
-      image: "/api/images/garbage1.jpg",
-      timestamp: "2025-09-13T09:15:00Z",
-      status: "in-progress"
-    },
-    {
-      id: 3,
-      title: "Street Light Not Working",
-      department: "Electricity",
-      description: "Street light near the bus stop on Koramangala 4th Block has been non-functional for 2 weeks. This is causing safety concerns for pedestrians at night.",
-      image: null,
-      timestamp: "2025-09-12T18:45:00Z",
-      status: "pending"
-    },
-    {
-      id: 4,
-      title: "Water Logging During Rain",
-      department: "Drainage",
-      description: "The entire stretch of Indiranagar 100 feet road gets completely waterlogged during heavy rains. This has been a recurring issue for the past 3 years. The drainage system needs immediate attention and upgrades. Residents and commuters face severe difficulties during monsoon season. Multiple shops in the area also get flooded.",
-      image: "/api/images/waterlog1.jpg",
-      timestamp: "2025-09-11T14:20:00Z",
-      status: "resolved"
-    },
-    {
-      id: 5,
-      title: "Traffic Signal Malfunction",
-      department: "Traffic Management",
-      description: "Traffic signal at the Silk Board junction has been malfunctioning intermittently, causing major traffic jams during peak hours.",
-      image: null,
-      timestamp: "2025-09-10T16:30:00Z",
-      status: "in-progress"
+      severity: "Medium",
+      description: "Sample complaint for demonstration purposes. Garbage has not been collected from MG Road area for the past 5 days.",
+      suggested_action: "Schedule immediate waste collection and review collection routes",
+      estimated_timeline: "1-2 days",
+      location: "MG Road area",
+      category: "Sanitation",
+      status: "pending",
+      timestamp: "2025-09-13T09:15:00Z"
     }
   ]
 
   useEffect(() => {
-    // Fetch complaints from the API
+    // Load complaints from localStorage and combine with mock data
     const fetchComplaints = async () => {
       setLoading(true)
       try {
-        const response = await fetch('/api/complaints')
-        const data = await response.json()
+        // Load submitted complaints from localStorage
+        const storedComplaints = loadComplaintsFromStorage()
         
-        if (data.success) {
-          setComplaints(data.complaints)
-        } else {
-          console.error('Error fetching complaints:', data.error)
-          // Fall back to mock data if API fails
-          setComplaints(mockComplaints)
-        }
+        // Combine stored complaints with mock data
+        const allComplaints = [...storedComplaints, ...mockComplaints]
+        
+        // Sort by timestamp (newest first)
+        const sortedComplaints = allComplaints.sort((a, b) => 
+          new Date(b.timestamp) - new Date(a.timestamp)
+        )
+        
+        setComplaints(sortedComplaints)
       } catch (error) {
-        console.error('Error fetching complaints:', error)
-        // Fall back to mock data if API fails
+        console.error('Error loading complaints:', error)
         setComplaints(mockComplaints)
       } finally {
         setLoading(false)
@@ -80,6 +67,11 @@ const AdminPanel = () => {
     }
 
     fetchComplaints()
+    
+    // Set up an interval to check for new complaints every 5 seconds
+    const interval = setInterval(fetchComplaints, 5000)
+    
+    return () => clearInterval(interval)
   }, [])
 
   const toggleExpand = (complaintId) => {
@@ -174,6 +166,29 @@ const AdminPanel = () => {
                   <span className="department-name">{complaint.department}</span>
                 </div>
 
+                {complaint.severity && (
+                  <div className="department-info">
+                    <span className="department-label">Severity:</span>
+                    <span className={`severity-badge severity-${complaint.severity?.toLowerCase()}`}>
+                      {complaint.severity}
+                    </span>
+                  </div>
+                )}
+
+                {complaint.location && (
+                  <div className="department-info">
+                    <span className="department-label">Location:</span>
+                    <span className="department-name">{complaint.location}</span>
+                  </div>
+                )}
+
+                {complaint.category && (
+                  <div className="department-info">
+                    <span className="department-label">Category:</span>
+                    <span className="department-name">{complaint.category}</span>
+                  </div>
+                )}
+
                 <div className="image-container">
                   {complaint.image ? (
                     <img 
@@ -206,6 +221,20 @@ const AdminPanel = () => {
                     </button>
                   )}
                 </div>
+
+                {complaint.suggested_action && (
+                  <div className="additional-info">
+                    <strong>Suggested Action:</strong>
+                    <p>{complaint.suggested_action}</p>
+                  </div>
+                )}
+
+                {complaint.estimated_timeline && (
+                  <div className="additional-info">
+                    <strong>Estimated Timeline:</strong>
+                    <span>{complaint.estimated_timeline}</span>
+                  </div>
+                )}
 
                 <div className="card-footer">
                   <span className="timestamp">

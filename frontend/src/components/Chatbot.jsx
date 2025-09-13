@@ -72,6 +72,11 @@ const Chatbot = () => {
         status: 'submitted'
       }
 
+      // Save to localStorage for admin panel
+      const existingComplaints = JSON.parse(localStorage.getItem('submittedComplaints') || '[]')
+      existingComplaints.push(jsonData)
+      localStorage.setItem('submittedComplaints', JSON.stringify(existingComplaints))
+
       // Create and download JSON file
       const dataStr = JSON.stringify(jsonData, null, 2)
       const dataBlob = new Blob([dataStr], { type: 'application/json' })
@@ -87,6 +92,9 @@ const Chatbot = () => {
       // Clean up the URL object
       URL.revokeObjectURL(url)
 
+      // Show success message
+      alert('Report submitted successfully! Redirecting to home page...')
+
       // Redirect to root page
       navigate('/')
     } catch (error) {
@@ -95,17 +103,44 @@ const Chatbot = () => {
     }
   }
 
-  // Hardcoded pothole report
-  const getHardcodedPotholeReport = () => {
-    return {
-      title: "Large Pothole Causing Traffic Hazard",
-      department: "Roads & Infrastructure", 
-      severity: "High",
-      description: "A significant pothole has formed on the main road, creating dangerous driving conditions. The pothole appears to be deep and wide enough to cause vehicle damage. Multiple vehicles have been observed swerving to avoid it, creating traffic safety concerns.",
-      suggested_action: "Immediate road repair with asphalt filling. Installation of temporary warning signs until permanent repair is completed.",
-      estimated_timeline: "2-3 days for emergency repair",
-      location: "Main road (location needs to be specified)",
-      category: "Infrastructure"
+  // Hardcoded civic issue reports
+  const getHardcodedReport = (type) => {
+    switch (type) {
+      case 'pothole':
+        return {
+          title: "Large Pothole Causing Traffic Hazard",
+          department: "Roads & Infrastructure", 
+          severity: "High",
+          description: "A significant pothole has formed on the main road, creating dangerous driving conditions. The pothole appears to be deep and wide enough to cause vehicle damage. Multiple vehicles have been observed swerving to avoid it, creating traffic safety concerns.",
+          suggested_action: "Immediate road repair with asphalt filling. Installation of temporary warning signs until permanent repair is completed.",
+          estimated_timeline: "2-3 days for emergency repair",
+          location: "Main road (location needs to be specified)",
+          category: "Infrastructure"
+        }
+      case 'drainage':
+        return {
+          title: "Blocked Drainage Causing Waterlogging",
+          department: "Drainage",
+          severity: "High",
+          description: "Blocked drainage in the area is causing severe waterlogging, especially during rains. This is leading to unhygienic conditions and inconvenience for residents.",
+          suggested_action: "Immediate cleaning and unclogging of the drainage system. Regular maintenance to prevent recurrence.",
+          estimated_timeline: "1-2 days",
+          location: "Area with reported waterlogging (specify location)",
+          category: "Sanitation"
+        }
+      case 'garbage':
+        return {
+          title: "Uncollected Garbage Piling Up",
+          department: "Waste Management",
+          severity: "Medium",
+          description: "Garbage has not been collected for several days, resulting in piles of waste on the street. This is attracting stray animals and causing foul smell.",
+          suggested_action: "Schedule immediate waste collection and review collection routes for efficiency.",
+          estimated_timeline: "1-2 days",
+          location: "Street/area with garbage issue (specify location)",
+          category: "Sanitation"
+        }
+      default:
+        return null
     }
   }
 
@@ -125,18 +160,22 @@ const Chatbot = () => {
 
     // Simulate processing delay
     setTimeout(() => {
-      // Check if message contains "pothole"
-      if (inputMessage.toLowerCase().includes('pothole')) {
-        // Generate hardcoded pothole report
+      // Lowercase message for matching
+      const msg = inputMessage.toLowerCase()
+      let reportType = null
+      if (msg.includes('pothole')) reportType = 'pothole'
+      else if (msg.includes('drainage') || msg.includes('waterlogging')) reportType = 'drainage'
+      else if (msg.includes('garbage') || msg.includes('waste')) reportType = 'garbage'
+
+      if (reportType) {
         const reportMessage = {
           type: 'report',
           content: 'Report generated successfully',
-          report: getHardcodedPotholeReport(),
+          report: getHardcodedReport(reportType),
           timestamp: new Date().toLocaleTimeString()
         }
         setMessages(prev => [...prev, reportMessage])
       } else {
-        // Return "not identified" message
         const botMessage = {
           type: 'bot',
           content: 'Not identified as a valid report. Please try again with a clearer description of the civic issue.',
