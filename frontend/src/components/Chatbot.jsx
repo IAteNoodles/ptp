@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import './Chatbot.css'
 
 const Chatbot = () => {
@@ -10,6 +11,7 @@ const Chatbot = () => {
   const videoRef = useRef(null)
   const canvasRef = useRef(null)
   const [showCamera, setShowCamera] = useState(false)
+  const navigate = useNavigate()
 
   // Handle file upload
   const handleFileUpload = (event) => {
@@ -60,7 +62,54 @@ const Chatbot = () => {
     setShowCamera(false)
   }
 
-  // Send message to backend
+  // Handle OK button click - save JSON and redirect
+  const handleReportOK = (reportData) => {
+    try {
+      // Create JSON data with timestamp
+      const jsonData = {
+        ...reportData,
+        submitted_at: new Date().toISOString(),
+        status: 'submitted'
+      }
+
+      // Create and download JSON file
+      const dataStr = JSON.stringify(jsonData, null, 2)
+      const dataBlob = new Blob([dataStr], { type: 'application/json' })
+      const url = URL.createObjectURL(dataBlob)
+      
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `complaint_report_${Date.now()}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // Clean up the URL object
+      URL.revokeObjectURL(url)
+
+      // Redirect to root page
+      navigate('/')
+    } catch (error) {
+      console.error('Error creating JSON file:', error)
+      alert('Error saving report. Please try again.')
+    }
+  }
+
+  // Hardcoded pothole report
+  const getHardcodedPotholeReport = () => {
+    return {
+      title: "Large Pothole Causing Traffic Hazard",
+      department: "Roads & Infrastructure", 
+      severity: "High",
+      description: "A significant pothole has formed on the main road, creating dangerous driving conditions. The pothole appears to be deep and wide enough to cause vehicle damage. Multiple vehicles have been observed swerving to avoid it, creating traffic safety concerns.",
+      suggested_action: "Immediate road repair with asphalt filling. Installation of temporary warning signs until permanent repair is completed.",
+      estimated_timeline: "2-3 days for emergency repair",
+      location: "Main road (location needs to be specified)",
+      category: "Infrastructure"
+    }
+  }
+
+  // Send message (frontend only processing)
   const sendMessage = async () => {
     if (!inputMessage.trim() && !selectedImage) return
 
@@ -74,44 +123,32 @@ const Chatbot = () => {
     setMessages(prev => [...prev, userMessage])
     setIsLoading(true)
 
-    try {
-      const formData = new FormData()
-      formData.append('message', inputMessage)
-      if (selectedImage) {
-        formData.append('image', selectedImage)
+    // Simulate processing delay
+    setTimeout(() => {
+      // Check if message contains "pothole"
+      if (inputMessage.toLowerCase().includes('pothole')) {
+        // Generate hardcoded pothole report
+        const reportMessage = {
+          type: 'report',
+          content: 'Report generated successfully',
+          report: getHardcodedPotholeReport(),
+          timestamp: new Date().toLocaleTimeString()
+        }
+        setMessages(prev => [...prev, reportMessage])
+      } else {
+        // Return "not identified" message
+        const botMessage = {
+          type: 'bot',
+          content: 'Not identified as a valid report. Please try again with a clearer description of the civic issue.',
+          timestamp: new Date().toLocaleTimeString()
+        }
+        setMessages(prev => [...prev, botMessage])
       }
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        body: formData
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to send message')
-      }
-
-      const data = await response.json()
-      
-      const botMessage = {
-        type: 'bot',
-        content: data.response || 'I received your message!',
-        timestamp: new Date().toLocaleTimeString()
-      }
-
-      setMessages(prev => [...prev, botMessage])
-    } catch (error) {
-      console.error('Error sending message:', error)
-      const errorMessage = {
-        type: 'bot',
-        content: 'Sorry, I encountered an error. Please try again.',
-        timestamp: new Date().toLocaleTimeString()
-      }
-      setMessages(prev => [...prev, errorMessage])
-    } finally {
       setIsLoading(false)
       setInputMessage('')
       setSelectedImage(null)
-    }
+    }, 1500) // 1.5 second delay to simulate processing
   }
 
   const handleKeyPress = (e) => {
@@ -135,7 +172,61 @@ const Chatbot = () => {
               {message.image && (
                 <img src={message.image} alt="Uploaded" className="message-image" />
               )}
-              <p>{message.content}</p>
+              
+              {message.type === 'report' ? (
+                <div className="report-container">
+                  <div className="report-header">
+                    <h3>📋 Generated Report</h3>
+                    {message.warning && (
+                      <div className="report-warning">⚠️ {message.warning}</div>
+                    )}
+                  </div>
+                  
+                  <div className="report-content">
+                    <div className="report-field">
+                      <strong>Title:</strong> {message.report.title}
+                    </div>
+                    <div className="report-field">
+                      <strong>Department:</strong> {message.report.department}
+                    </div>
+                    <div className="report-field">
+                      <strong>Severity:</strong> 
+                      <span className={`severity-badge severity-${message.report.severity?.toLowerCase()}`}>
+                        {message.report.severity}
+                      </span>
+                    </div>
+                    <div className="report-field">
+                      <strong>Location:</strong> {message.report.location}
+                    </div>
+                    <div className="report-field">
+                      <strong>Category:</strong> {message.report.category}
+                    </div>
+                    <div className="report-field">
+                      <strong>Description:</strong>
+                      <p className="report-description">{message.report.description}</p>
+                    </div>
+                    <div className="report-field">
+                      <strong>Suggested Action:</strong>
+                      <p className="report-action">{message.report.suggested_action}</p>
+                    </div>
+                    <div className="report-field">
+                      <strong>Estimated Timeline:</strong> {message.report.estimated_timeline}
+                    </div>
+                  </div>
+                  
+                  <div className="report-actions">
+                    <button 
+                      className="report-btn btn-ok"
+                      onClick={() => handleReportOK(message.report)}
+                    >
+                      ✅ OK
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p>{message.content}</p>
+              )}
+              
               <span className="timestamp">{message.timestamp}</span>
             </div>
           </div>
