@@ -53,22 +53,22 @@ def submit_report(problem_type: str, image_base64: str, description: str) -> str
     try:
         # Decode the base64 string to get the raw image bytes
         image_data = base64.b64decode(image_base64)
-        
+
         # Connect to the SQLite database
         conn = sqlite3.connect(DB_FILE)
         cursor = conn.cursor()
-        
+
         # Insert the data into the Complaint table using a parameterized query to prevent SQL injection
         cursor.execute(
             "INSERT INTO Complaint (problem_type, image, description) VALUES (?, ?, ?)",
             (problem_type, image_data, description)
         )
-        
+
         conn.commit()
-        
+
         # Get the ID of the newly inserted row
         new_id = cursor.lastrowid
-        
+
         return f"Report submitted successfully. Your complaint ID is {new_id}."
 
     except sqlite3.Error as e:
@@ -82,7 +82,7 @@ def submit_report(problem_type: str, image_base64: str, description: str) -> str
 if __name__ == "__main__":
     # Ensure the database and table are created before starting the server
     initialize_database()
-    
+
     # Run the FastMCP agent as an HTTP server
     mcp.run(
         transport="http",
